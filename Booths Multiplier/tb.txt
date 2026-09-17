@@ -1,0 +1,99 @@
+`timescale 1ns/1ps
+
+module tb_booth_multiplier;
+
+    parameter N = 8;
+
+    reg clk;
+    reg rst;
+    reg start;
+
+    reg signed [N-1:0] multiplicand;
+    reg signed [N-1:0] multiplier;
+
+    wire signed [2*N-1:0] product;
+    wire done;
+
+    booth_multiplier #(
+        .N(N)
+    ) DUT (
+        .clk(clk),
+        .rst(rst),
+        .start(start),
+        .multiplicand(multiplicand),
+        .multiplier(multiplier),
+        .product(product),
+        .done(done)
+    );
+
+    // Clock: 10 ns period
+    always #5 clk = ~clk;
+
+    task multiply;
+        input signed [N-1:0] a;
+        input signed [N-1:0] b;
+
+        begin
+
+            @(posedge clk);
+
+            multiplicand = a;
+            multiplier   = b;
+            start        = 1;
+
+            @(posedge clk);
+            start = 0;
+
+            wait(done);
+
+            #1;
+
+            $display(
+                "Time=%0t : %0d x %0d = %0d",
+                $time,
+                a,
+                b,
+                product
+            );
+
+            if (product !== a * b)
+                $display("ERROR!");
+
+            else
+                $display("PASS");
+
+        end
+    endtask
+
+    initial begin
+
+        clk = 0;
+        rst = 1;
+        start = 0;
+
+        multiplicand = 0;
+        multiplier   = 0;
+
+        #20;
+
+        rst = 0;
+
+        // Test cases
+        multiply(8'd5,   8'd3);
+        multiply(8'd7,   -8'd4);
+        multiply(-8'd6,  8'd5);
+        multiply(-8'd7, -8'd3);
+
+        multiply(8'd25,  8'd10);
+        multiply(-8'd25, 8'd10);
+
+        multiply(8'd127, 8'd2);
+        multiply(-8'd128, 8'd2);
+
+        #20;
+
+        $finish;
+
+    end
+
+endmodule
